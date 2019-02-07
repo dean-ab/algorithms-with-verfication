@@ -9,6 +9,26 @@ predicate SortedSequence(q: seq<int>)
 	forall i,j :: 0 <= i <= j < |q| ==> q[i] <= q[j]
 }
 
+predicate isLeftArr(a: array<int>, left: array<int>, middle: nat)
+	reads left
+	reads a
+	requires a.Length >= 2
+	requires middle == a.Length / 2 && 0 < middle < a.Length
+{
+	
+	forall j :: 0 <= j < middle + 1 < left.Length ==> left[j] == a[j]
+}
+
+predicate isRightArr(a: array<int>, right: array<int>, middle: nat)
+	reads right
+	reads a
+	requires a.Length >= 2
+	requires middle == a.Length / 2 && 0 < middle < a.Length
+{
+	
+	forall j :: 0 <= j < (a.Length - (middle + 1)) < right.Length  ==> right[j] == a[j + (middle + 1)]
+}
+
 method MergeSort(a: array<int>) returns (b: array<int>)
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
 	decreases a.Length
@@ -50,9 +70,8 @@ method MergeSort2 (a: array<int>, middle: nat) returns (b: array<int>)
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
 {
 	// Sequential Composition
-	
 	var left, right := Assign3Split(a, middle);
-	// b := MergeSort3(a, left, right);
+	b := MergeSort3(a, left, right, middle);
 }
 
 method AssignMiddle (a: array<int>) returns (m: nat) 
@@ -72,8 +91,8 @@ lemma LemmaS2 (a: array<int>)
 
 method Assign3Split(a: array<int>, middle: nat) returns (left: array<int>, right: array<int>) 
 	requires a.Length >= 2 && middle == a.Length / 2 && 0 < middle < a.Length
-	ensures forall j :: 0 <= j < middle + 1 < left.Length ==> left[j] == a[j]
-	ensures forall j :: 0 <= j < (a.Length - (middle + 1)) < right.Length  ==> right[j] == a[j + (middle + 1)]
+	ensures isLeftArr(a, left, middle)
+	ensures isRightArr(a, right, middle)
 {
 	left := Assign3Left(a, middle);
 	right :=  Assign3Right(a, middle);
@@ -81,7 +100,7 @@ method Assign3Split(a: array<int>, middle: nat) returns (left: array<int>, right
 
 method Assign3Left(a: array<int>, middle: nat) returns (arr: array<int>) 
 	requires a.Length >= 2 && middle == a.Length / 2 && 0 < middle < a.Length
-	ensures forall j :: 0 <= j < middle + 1 < arr.Length ==> arr[j] == a[j]
+	ensures isLeftArr(a, arr, middle)
 {
 	var i := 0;
 	arr := new int[middle+1];
@@ -91,8 +110,7 @@ method Assign3Left(a: array<int>, middle: nat) returns (arr: array<int>)
 	{
 		// I is increasing by one
 		// arr[i] = a[i]
-		LeftLoopBody(arr, a, i, middle);
-		LemmaI1(arr, a, i+1, middle);
+		LeftLoopBody(arr, a, i, middle); //following assignment
 		i := i + 1;
 	}
 } 
@@ -101,7 +119,7 @@ method LeftLoopBody(arr: array<int>, a: array<int>, i: nat, middle: nat)
 	requires a.Length >= 2 && middle == a.Length / 2 && middle > 0 // Pre
 	requires arr.Length == middle + 1
 	requires i < middle + 1 && forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j]
-	ensures forall j :: 0 <= j <= i  < arr.Length ==> arr[j] == a[j]
+	ensures forall j :: 0 <= j < i + 1  < arr.Length ==> arr[j] == a[j] // post cond of following assignment
 	modifies arr
 {
 	LemmaArrI(arr, a, i, middle, a[i]);
@@ -115,17 +133,9 @@ lemma  LemmaArrI(arr: array<int>, a: array<int>, i: nat, middle: nat, ai: int)
 	requires ai == a[i]
 	ensures arr[..i] + [ai] == a[..i+1]
 {}
-
-lemma LemmaI1 (arr: array<int>, a: array<int>, i: nat, middle: nat)
-	requires a.Length >= 2 && middle == a.Length / 2 && 0 < middle < a.Length
-	requires arr.Length == middle + 1 && i-1 < middle + 1
-	requires forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j] //post of LeftLoopBody
-	ensures forall j :: 0 <= j < i < arr.Length < a.Length ==> arr[j] == a[j]
-{}
-
 method Assign3Right(a: array<int>, middle: nat) returns (arr: array<int>) 
 	requires a.Length >= 2 && middle == a.Length / 2 && 0 < middle < a.Length
-	ensures forall j :: 0 <= j < (a.Length - (middle + 1)) < arr.Length  ==> arr[j] == a[j + (middle + 1)]
+	ensures isRightArr(a, arr, middle)
 {
 	var i := 0;
 	arr := new int[a.Length - (middle + 1)];
@@ -135,8 +145,7 @@ method Assign3Right(a: array<int>, middle: nat) returns (arr: array<int>)
 	{
 		// I is increasing by one
 		// arr[i] = a[i]
-		RightLoopBody(arr, a, i, middle);
-		LemmaI2(arr, a, i+1, middle);
+		RightLoopBody(arr, a, i, middle); // following assignment
 		i := i + 1;
 	}
 } 
@@ -146,7 +155,7 @@ method RightLoopBody(arr: array<int>, a: array<int>, i: nat, middle: nat)
 	requires 0 <= i < a.Length - (middle + 1) // Guard
 	requires forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j + middle + 1] // Inv
 	requires arr.Length == a.Length - (middle + 1)
-	ensures forall j :: 0 <= j <= i < arr.Length ==> arr[j] == a[j + middle + 1]
+	ensures forall j :: 0 <= j < i + 1 < arr.Length ==> arr[j] == a[j + middle + 1] // post cond of following assignment
 	modifies arr
 {
 	LemmaArrIRight(arr, a, i, middle, a[i + middle + 1]);
@@ -161,13 +170,20 @@ lemma LemmaArrIRight(arr: array<int>, a: array<int>, i: nat, middle: nat, ai: in
 	ensures arr[..i] + [ai] == a[middle+1 .. (i + middle + 2)]
 {}
 
-lemma LemmaI2 (arr: array<int>, a: array<int>, i: nat, middle: nat)
-	requires a.Length >= 2 && middle == a.Length / 2 && 0 < middle < a.Length
-	requires i-1 < a.Length - (middle + 1) // Guard
-	requires forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j + middle + 1] //post of RighttLoopBody
-	ensures forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j + middle + 1]
-{}
+method MergeSort3(a: array<int>, left: array<int>, right: array<int>, middle: nat) returns(b: array<int>)
+	requires a.Length >= 2
+	requires middle == a.Length / 2 && 0 < middle < a.Length
+	requires isLeftArr(a, left, middle) && isRightArr(a, right, middle)
+	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
+{
+	var sortedL, sortedR := MergeSort3a(a, left, right, middle);
+}
 
+method MergeSort3a(a: array<int>, left: array<int>, right: array<int>, middle: nat) returns(sortedL: array<int>, sortedR: array<int>)
+	requires a.Length >= 2
+	requires middle == a.Length / 2 && 0 < middle < a.Length
+	requires isLeftArr(a, left, middle) && isRightArr(a, right, middle)
+{}
 
 method Merge(b: array<int>, c: array<int>, d: array<int>)
 	requires b != c && b != d && b.Length == c.Length + d.Length
@@ -187,3 +203,5 @@ method Main() {
 	assert Sorted(a);
 	assert a[..] == [4,6,8];
 }
+
+
