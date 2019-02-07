@@ -10,23 +10,25 @@ predicate SortedSequence(q: seq<int>)
 }
 
 predicate isLeftArr(a: array<int>, left: array<int>, middle: nat)
-	reads left
-	reads a
-	requires a.Length >= 2
-	requires middle == a.Length / 2 && 0 < middle < a.Length
+	reads left, a
 {
-	
+	a.Length >= 2 && middle == a.Length / 2 && 0 < middle < a.Length &&
+	left.Length == middle + 1 &&
 	forall j :: 0 <= j < middle + 1 < left.Length ==> left[j] == a[j]
 }
 
 predicate isRightArr(a: array<int>, right: array<int>, middle: nat)
-	reads right
-	reads a
-	requires a.Length >= 2
-	requires middle == a.Length / 2 && 0 < middle < a.Length
+	reads right, a
 {
-	
+	a.Length >= 2 && middle == a.Length / 2 && 0 < middle < a.Length &&
+	right.Length == a.Length - (middle + 1) &&
 	forall j :: 0 <= j < (a.Length - (middle + 1)) < right.Length  ==> right[j] == a[j + (middle + 1)]
+}
+
+predicate isSorted(origin: array<int>, sortedArr: array<int>)
+	reads origin, sortedArr
+{
+	sortedArr.Length == origin.Length && Sorted(sortedArr) && multiset(origin[..]) == multiset(sortedArr[..])
 }
 
 method MergeSort(a: array<int>) returns (b: array<int>)
@@ -171,25 +173,52 @@ lemma LemmaArrIRight(arr: array<int>, a: array<int>, i: nat, middle: nat, ai: in
 {}
 
 method MergeSort3(a: array<int>, left: array<int>, right: array<int>, middle: nat) returns(b: array<int>)
-	requires a.Length >= 2
-	requires middle == a.Length / 2 && 0 < middle < a.Length
 	requires isLeftArr(a, left, middle) && isRightArr(a, right, middle)
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
 {
+	b := new int[a.Length];
+	//Sequantion composition
 	var sortedL, sortedR := MergeSort3a(a, left, right, middle);
+	b := MergeSort3b(b, left, right,sortedL, sortedR, middle);
 }
 
 method MergeSort3a(a: array<int>, left: array<int>, right: array<int>, middle: nat) returns(sortedL: array<int>, sortedR: array<int>)
-	requires a.Length >= 2
-	requires middle == a.Length / 2 && 0 < middle < a.Length
 	requires isLeftArr(a, left, middle) && isRightArr(a, right, middle)
-{}
+	ensures isSorted(left, sortedL) && isSorted(right, sortedR)
+	
+{
+	//Sequantion composition
+	// sortedL := MergeSort(left);
+	// sortedR := MergeSort(right);
+}
+
+method MergeSort3b(a: array<int>, left: array<int>, right: array<int>,sortedL: array<int>, sortedR: array<int>, middle: nat) returns(b: array<int>)
+	requires isLeftArr(a, left, middle) && isRightArr(a, right, middle)
+	requires isSorted(left, sortedL) && isSorted(right, sortedR)
+	{
+		b := new int[a.Length];
+		Merge(b, sortedL, sortedR);
+	}
+
 
 method Merge(b: array<int>, c: array<int>, d: array<int>)
 	requires b != c && b != d && b.Length == c.Length + d.Length
 	requires Sorted(c) && Sorted(d)
 	ensures Sorted(b) && multiset(b[..]) == multiset(c[..])+multiset(d[..])
 	modifies b
+	{
+		var k,l,r := 0,0,0;
+		k,l,r := MergeWhileLoop(b, c, d, k, l, r);
+		
+	}
+method MergeWhileLoop(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) returns(k: nat, l: nat, r: nat)
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d)
+	ensures 0 <= k < b.Length && 0 <= l < c.Length && 0 <= r < d.Length
+	ensures forall i,j :: 0 <= j < i < k ==> b[j] <= b[i] // Sorted(b[.. k])
+	ensures multiset(b[..k]) == multiset(c[..l] + d[..r])
+	modifies b
+	{}
 
 method Main() {
 	var a := new int[3];
