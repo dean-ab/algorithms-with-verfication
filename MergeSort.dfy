@@ -14,7 +14,7 @@ predicate isLeftArr(a: array<int>, left: array<int>, middle: nat)
 {
 	a.Length >= 2 && middle == (a.Length - 1) / 2 && 0 < middle < a.Length &&
 	left.Length == middle + 1 &&
-	forall j :: 0 <= j < middle + 1 < left.Length ==> left[j] == a[j]
+	forall j :: 0 <= j < left.Length ==> left[j] == a[j]
 }
 
 predicate isRightArr(a: array<int>, right: array<int>, middle: nat)
@@ -22,7 +22,7 @@ predicate isRightArr(a: array<int>, right: array<int>, middle: nat)
 {
 	a.Length >= 2 && middle == (a.Length - 1) / 2 && 0 < middle < a.Length &&
 	right.Length == a.Length - (middle + 1) &&
-	forall j :: 0 <= j < (a.Length - (middle + 1)) < right.Length  ==> right[j] == a[j + (middle + 1)]
+	forall j :: 0 <= j < right.Length  ==> right[j] == a[j + (middle + 1)]
 }
 
 predicate isSorted(origin: array<int>, sortedArr: array<int>)
@@ -101,13 +101,13 @@ method {:verify false} Assign3Split (a: array<int>, middle: nat) returns (left: 
 
 method {:verify false} Assign3Left(a: array<int>, middle: nat) returns (arr: array<int>) 
 	requires a.Length >= 2 && middle == (a.Length - 1) / 2 && 0 <= middle < a.Length
-	ensures isLeftArr(a, arr, middle)
+	ensures isLeftArr(a, arr, middle) && arr.Length < a.Length
 {
 	var i := 0;
 	arr := new int[middle+1];
 	while (i < middle + 1) 
 		decreases middle + 1 - i
-		invariant forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j];
+		invariant forall j :: 0 <= j < i < arr.Length  ==> arr[j] == a[j];
 	{
 		// I is increasing by one
 		// arr[i] = a[i]
@@ -135,12 +135,13 @@ lemma  LemmaArrI(arr: array<int>, a: array<int>, i: nat, middle: nat, ai: int)
 	ensures arr[..i] + [ai] == a[..i+1]
 {}
 method {:verify true}  Assign3Right(a: array<int>, middle: nat) returns (arr: array<int>) 
-	requires a.Length >= 2 && middle == (a.Length - 1) / 2 && 0 < middle < a.Length
-	ensures isRightArr(a, arr, middle)
+	requires a.Length >= 2 && middle == (a.Length - 1) / 2 && 0 < middle < a.Length && arr.Length < a.Length
+	// ensures isRightArr(a, arr, middle)
+	ensures forall i :: 0 <= i < arr.Length < a.Length ==> arr[i] == a[i + middle + 1]
 {
 	var i := 0;
 	arr := new int[a.Length - (middle + 1)];
-	while (i < a.Length - (middle + 1))
+	while (i < arr.Length)
 		decreases a.Length - (i + middle + 1)
 		invariant forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j + middle + 1]
 	{
@@ -149,6 +150,7 @@ method {:verify true}  Assign3Right(a: array<int>, middle: nat) returns (arr: ar
 		RightLoopBody(arr, a, i, middle); // following assignment
 		i := i + 1;
 	}
+	// assert forall j :: 0 <= j < arr.Length  ==> arr[j] == a[j + (middle + 1)];
 } 
 
 method {:verify true}  RightLoopBody(arr: array<int>, a: array<int>, i: nat, middle: nat) 
@@ -156,9 +158,11 @@ method {:verify true}  RightLoopBody(arr: array<int>, a: array<int>, i: nat, mid
 	requires 0 <= i < a.Length - (middle + 1) // Guard
 	requires forall j :: 0 <= j < i < arr.Length ==> arr[j] == a[j + middle + 1] // Inv
 	requires arr.Length == a.Length - (middle + 1)
+
 	ensures forall j :: 0 <= j < i + 1 < arr.Length ==> arr[j] == a[j + middle + 1] // post cond of following assignment
 	modifies arr
 {
+	assert forall j :: 0 <= j < i  ==> arr[j] == a[j + (middle + 1)];
 	LemmaArrIRight(arr, a, i, middle, a[i + middle + 1]);
 	arr[i] := a[i + middle + 1];
 } 
@@ -340,28 +344,22 @@ predicate MergeRestInv(b: array<int>, c: array<int>, d: array<int>, k: nat, l: n
 predicate CrossSortedRest1(b: array<int>, arr: array<int>, k: nat, index: nat) 
 	reads b, arr
 {
-	forall i, n :: (0 <= i < k < b.Length && index <= n < arr.Length ) ==> b[i] <= arr[n] // Sorted(b[.. k])
+	forall i, n :: (0 <= i < k < b.Length && index <= n < arr.Length ) ==> b[i] <= arr[n] 
 }
 method {:verify true}  MergeRest1(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat)
 	requires b != c && b != d && b.Length == c.Length + d.Length
 	requires Sorted(c) && Sorted(d)
 	requires MergeInv(b,c,d,k,l,r)
-	requires forall j, m :: 0 <= j < k && r <= m < d.Length ==> b[j] <= d[m]
 	requires ((l == c.Length && r < d.Length) || (l < c.Length && r == d.Length)) && l == c.Length//r < d.Length // Guard
 	ensures Sorted(b) && multiset(b[..]) == multiset(c[..])+multiset(d[..]) 
 	modifies b
 {
 	var r1: nat, k1: nat := r, k;
-	assert r1 < d.Length;
-	assert 	forall i, n, m :: (0 <= i < k < b.Length && l <= n < c.Length && r <= m < d.Length) ==> b[i] <= c[n] && b[i] <= d[m]; // Sorted(b[.. k])
-
 	while (k1 < b.Length && r1 < d.Length) 
 		decreases b.Length - k1
 		invariant MergeRestInv(b,c,d,k1,l,r1) 
 	{
-		assert 	forall i, n, m :: (0 <= i < k < b.Length && l <= n < c.Length && r <= m < d.Length) ==> b[i] <= c[n] && b[i] <= d[m]; // Sorted(b[.. k])
 
-		assert MergeRestInv(b,c,d,k1,l,r1);
 
 		assert r1 < d.Length;
 		b[k1] := d[r1];
