@@ -42,12 +42,14 @@ predicate hi(q: seq<int>, l: nat, h: nat, k: nat)
 function IndexSet(start: nat, end: nat, except: nat): set<nat> {
 	 set i: nat | start <= i < end && i != except }
 
-method {:verify false} swap (heap: array<int>, x: nat, y: nat) 
-	modifies heap
+method {:verify false} swap (a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: seq<int>) 
+	requires 0 <= current < a.Length && 0 < heapsize <= a.Length && 0 <= parentIndex < a.Length
+	requires Guard1(a,current,parentIndex) && WhileInv(a[..],heapsize,x,current,parentIndex,oldA)
+	ensures current > 0 && WhileInv(a[..],heapsize,x,current,parentIndex,oldA)
+	modifies a
 {
-	var temp := heap[x];
-	heap[x] := heap[y];
-	heap[y] := temp;
+	Lemma3(a,heapsize,x,current,parentIndex,oldA);
+	a[current], a[parentIndex] := a[parentIndex], a[current];
 }
 
 method {:verify true} HeapInsert(a: array<int>, heapsize: nat, x: int)
@@ -146,14 +148,12 @@ method {:verify true} Heapify(a: array<int>, heapsize: nat, x: int, current0: na
 {
 	var current, parentIndex := current0, parentIndex0; 
 	while (Guard1(a, current, parentIndex))
-		invariant WhileInv(a, heapsize, x, current, parentIndex, old(a[..heapsize]))
+		invariant WhileInv(a[..], heapsize, x, current, parentIndex, old(a[..heapsize]))
 		decreases current
-	 { 
-		
-		swap(a, current, parentIndex); 
-		current := parentIndex; 
-		parentIndex := Parent(current);
+	{ 
+		current, parentIndex := LoopBody(a, heapsize, x, current, parentIndex, old(a[..heapsize]));	
 	}
+	// WhileInv && !Guard1
 }
 predicate method Guard1(a: array<int>, current: nat, parentIndex: int)
 	requires 0 <= current < a.Length && parentIndex == (current - 1) / 2
@@ -161,14 +161,34 @@ predicate method Guard1(a: array<int>, current: nat, parentIndex: int)
 {
 	current > 0 && a[current] > a[parentIndex]
 }
-predicate WhileInv(a: array<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: seq<int>)
-	requires 0 <= current < a.Length 
-	requires 0 < heapsize <= a.Length
-	reads a
+predicate WhileInv(a: seq<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: seq<int>)
+	requires 0 <= current < |a|
+	requires 0 < heapsize <= |a|
 {
 	multiset(a[..heapsize]) == multiset(oldA[..]) &&
 	ph(a[..], IndexSet(0, heapsize, current))
 }
+
+
+method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, oldA: seq<int>) returns (current: nat, parentIndex: int)
+	requires 0 <= current0 < a.Length && 0 < heapsize <= a.Length && 0 <= parentIndex0 < a.Length
+	requires Guard1(a,current0,parentIndex0) && WhileInv(a[..],heapsize,x,current0,parentIndex0,oldA)
+	ensures WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
+	modifies a
+{
+	swap(a, heapsize, x, current0, parentIndex0, oldA); 
+	current, parentIndex := LoopBody1(a,heapsize,x,current0,parentIndex0);
+	// current := parentIndex; 
+	// parentIndex := Parent(current);
+}
+
+lemma {:verify true} Lemma3(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: seq<int>) 
+	requires 0 <= current < a.Length && 0 < heapsize <= a.Length && 0 <= parentIndex < a.Length
+	requires Guard1(a,current,parentIndex) && WhileInv(a[..],heapsize,x,current,parentIndex,oldA)
+	ensures current > 0 && WhileInv(a[..parentIndex] + [a[parentIndex]] + a[parentIndex+1..current] + [a[current]],heapsize,x,parentIndex,current,oldA)
+{}
+
+
 method Main() {
 	var a := new int[8];
 	a[0] := 6;
