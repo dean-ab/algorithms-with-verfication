@@ -16,7 +16,7 @@ predicate isValidIndex (a: array<int>, i: nat)
 
 method MergeSort(a: array<int>) returns (b: array<int>)
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
-	decreases a.Length
+	decreases a.Length, 4
 {
     // Alternation
     if (a.Length < 2) {
@@ -43,7 +43,7 @@ lemma LemmaS1 (a: array<int>)
 method MergeSort1 (a: array<int>) returns (b: array<int>)
 	requires a.Length >= 2 // !(If test)
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
-	decreases a.Length
+	decreases a.Length, 3
 {
 	// Sequential Composition
 	var middle := AssignMiddle(a);
@@ -69,7 +69,7 @@ method MergeSort2 (a: array<int>, middle: nat) returns (b: array<int>)
 	requires a.Length >= 2
 	requires middle == (a.Length - 1) / 2 && isValidIndex(a, middle)
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
-	decreases a.Length
+	decreases a.Length, 2
 {
 	// Sequential Composition
 	var left, right, i1, i2 := Assign3Split(a, middle);
@@ -94,8 +94,8 @@ method Assign3Left(a: array<int>, middle: nat) returns (arr: array<int>, i: nat)
 	requires a.Length >= 2 && middle == (a.Length - 1) / 2 && isValidIndex(a, middle) 
 	ensures isLeftArr(a, arr, middle, i) && arr.Length == middle + 1
 {
-	i := 0;
-	arr := new int[middle+1];
+	i, arr := 0, new int[middle+1];
+	// Iteration
 	while (i != arr.Length) 
 		decreases arr.Length - i
 		invariant Inv1(a, arr, i)
@@ -135,6 +135,7 @@ method LeftLoopBody(arr: array<int>, a: array<int>, i: nat, middle: nat)
 	ensures Inv1(a, arr, i+1)
 	modifies arr
 {
+	// Assignment
 	LemmaArrI(arr, a, i, middle);
 	arr[i] := a[i];
 } 
@@ -149,8 +150,8 @@ method Assign3Right(a: array<int>, middle: nat) returns (arr: array<int>, i: nat
 	requires a.Length >= 2 && middle == (a.Length - 1) / 2 && isValidIndex(a, middle) 
 	ensures isRightArr(a, arr, middle, i) && arr.Length == a.Length - (middle + 1)
 {
-	i := 0;
-	arr := new int[a.Length - (middle + 1)];
+	i, arr := 0, new int[a.Length - (middle + 1)];
+	// Iteration
 	while (i != arr.Length)
 		decreases arr.Length - i
 		invariant Inv2(a, arr, middle, i)
@@ -177,6 +178,7 @@ method RightLoopBody(arr: array<int>, a: array<int>, i: nat, middle: nat)
 	ensures Inv2(a, arr, middle, i+1)
 	modifies arr
 {
+	// Assignment
 	LemmaArrIRight(arr, a, i, middle);
 	arr[i] := a[i + middle + 1];
 } 
@@ -191,7 +193,7 @@ method MergeSort3(a: array<int>, left: array<int>, right: array<int>, middle: na
 	requires isLeftArr(a, left, middle, i1) && isRightArr(a, right, middle, i2)
 	requires left.Length + right.Length == a.Length
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
-	decreases left.Length, right.Length
+	decreases a.Length, 1
 {
 	// Sequential Composition
 	var sortedL, sortedR := MergeSort3a(a, left, right, middle, i1, i2);
@@ -203,7 +205,7 @@ method MergeSort3a(a: array<int>, left: array<int>, right: array<int>, middle: n
 	requires left.Length + right.Length == a.Length
 	ensures isSorted(left, sortedL) && isSorted(right, sortedR)
 	ensures sortedL.Length + sortedR.Length == a.Length
-	decreases left.Length, right.Length
+	decreases a.Length, 0
 {
 	// Sequential Composition
 	sortedL := MergeSort(left);
@@ -221,16 +223,183 @@ method {:verify true}  MergeSort3b(a: array<int>, left: array<int>, right: array
 	requires sortedL.Length + sortedR.Length == a.Length
 	ensures Sorted(b) && multiset(b[..]) == multiset(sortedR[..])+multiset(sortedL[..])
 {
-		b := new int[a.Length];
-		Merge(b, sortedL, sortedR);
+	b := new int[a.Length];
+	Merge(b, sortedL, sortedR);
 }
-
 
 method Merge(b: array<int>, c: array<int>, d: array<int>)
 	requires b != c && b != d && b.Length == c.Length + d.Length
 	requires Sorted(c) && Sorted(d)
 	ensures Sorted(b) && multiset(b[..]) == multiset(c[..])+multiset(d[..])
 	modifies b
+{
+	var k,l,r := 0,0,0;
+	k, l, r := MergeWhileLoop(b, c, d, k, l, r);
+	assert MergeInv(b,c,d,k,l,r) && !Guard1(b,c,d,k,l,r);
+	k, l, r:= MergeRest(b, c, d, k, l, r);
+}
+
+method {:verify true} MergeWhileLoop(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) returns(k: nat, l: nat, r: nat)
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d) 
+	requires k0 == 0 && l0 == 0 && r0 == 0
+	ensures MergeInv(b,c,d,k,l,r) && !Guard1(b,c,d,k,l,r)
+	modifies b
+{
+	k, l, r := k0, l0, r0;
+	// Iteration
+	while (Guard1(b,c,d,k,l,r))
+		decreases b.Length - k
+		invariant MergeInv(b,c,d,k,l,r)
+	{
+		ghost var V0 := b.Length - k;
+		// Following Assignment k
+		k,l,r := MergeLoopBody(b, c, d, k, l, r);
+		assert 0 <= b.Length - k - 1 < V0;
+		k := k + 1;
+		assert 0 <= b.Length - k < V0;
+	}
+	assert CrossSorted2(b,c,d,k,l,r);
+}
+
+predicate method Guard1(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat)
+	requires 0 <= k && 0 <= l && 0 <= r
+{
+	l < c.Length && r < d.Length && k < b.Length
+}
+
+predicate MergeInv(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat) 
+	reads b, c, d
+{
+	 0 <= k <= b.Length && 0 <= l <= c.Length && 0 <= r <= d.Length &&  k == l + r && 
+	 multiset(b[..k]) == multiset(c[..l] + d[..r]) && CrossSorted2(b,c,d,k,l,r) &&
+	(forall i,j :: 0 <= j < i < k ==> b[j] <= b[i]) // Sorted(b[.. k])
+}
+
+predicate CrossSorted(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat) 
+	reads b, c, d
+{
+	forall i, n, m :: 0 <= i < k < b.Length && l <= n < c.Length && r <= m < d.Length ==> b[i] <= c[n] && b[i] <= d[m]
+}
+
+predicate CrossSorted2(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat) 
+	reads b, c, d
+{
+	// forall i, j, n, m :: (0 <= j < i < k < b.Length && l <= n < c.Length && r <= m < d.Length) ==> b[j] <= b[i] && b[i] <= c[n] && b[i] <= d[m]
+	(forall i,j :: 0 <= i < k < b.Length && l <= j < c.Length ==> b[i] <= c[j]) &&
+	(forall i,j :: 0 <= i < k < b.Length && r <= j < d.Length ==> b[i] <= d[j])
+}
+
+method MergeLoopBody(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) returns(k: nat, l: nat, r: nat)
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d) 
+	requires MergeInv(b,c,d,k0,l0,r0) && Guard1(b,c,d,k0,l0,r0)  // Inv & Guard
+	ensures MergeInv(b,c,d,k+1,l,r) && k + 1 == (l + r) > (l0 + r0)
+	modifies b
+{
+	// Alternation
+	k, l, r := k0, l0, r0;
+	if (c[l] <= d[r]) {
+		// Following Assignment l
+		MergeLoopBody1(b,c,d,k,l,r);
+		l := l+1;
+	} else {
+		// Following Assignment r
+		MergeLoopBody2(b,c,d,k,l,r);
+		r := r+1;
+	}
+}
+
+method MergeLoopBody1(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) 
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d) 
+	requires MergeInv(b,c,d,k0,l0,r0) && Guard1(b,c,d,k0,l0,r0)
+	requires c[l0] <= d[r0] // If Test
+	ensures MergeInv(b,c,d,k0+1,l0+1,r0)
+	modifies b
+{
+	// Assignment 
+	LemmaLB1(b,c,d,k0,l0,r0);
+	b[k0] := c[l0];
+}
+
+lemma LemmaLB1(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat)
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d) 
+	requires MergeInv(b,c,d,k,l,r) && Guard1(b,c,d,k,l,r)
+	requires c[l] <= d[r] // If Test
+
+	// Modified MergeInv simulates b[..k] + c[l]
+	ensures 0 <= k <= b.Length && 0 <= l <= c.Length && 0 <= r <= d.Length &&  k == l + r && 
+	multiset(b[..k] + [c[l]]) == multiset(c[..l+1] + d[..r]) && 
+	forall i, n, m :: 0 <= i < k < b.Length && l + 1 <= n < c.Length && r <= m < d.Length ==> 
+	b[i] <= c[n] && b[i] <= d[m] && c[l] <= d[m] && c[l] <= c[n] // CrossSorted(b[..k] + c[l],c,d,k+1,l+1,r)
+	ensures forall i,j :: 0 <= j < i < k ==> b[j] <= b[i] && b[j] <= c[l] // Sorted(b[.. k+1])
+{}
+
+method MergeLoopBody2(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) 
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d) 
+	requires MergeInv(b,c,d,k0,l0,r0) && Guard1(b,c,d,k0,l0,r0)
+	requires c[l0] > d[r0] // !If Test
+	ensures MergeInv(b,c,d,k0+1,l0,r0+1)
+	modifies b
+{
+	// Assignment
+	LemmaLB2(b,c,d,k0,l0,r0);
+	b[k0] := d[r0];
+}
+lemma LemmaLB2(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat)
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d) 
+	requires MergeInv(b,c,d,k,l,r) && Guard1(b,c,d,k,l,r)
+	requires c[l] > d[r] // !If Test
+
+	// Modified MergeInv simulates b[..k] + d[r]
+	ensures 0 <= k <= b.Length && 0 <= l <= c.Length && 0 <= r <= d.Length &&  k == l + r && 
+	 multiset(b[..k] + [d[r]]) == multiset(c[..l] + d[..r+1]) && 
+	 forall i, n, m :: (0 <= i < k < b.Length && l <= n < c.Length && r + 1 <= m < d.Length) ==> 
+	 b[i] <= c[n] && b[i] <= d[m] && d[r] <= c[n] && d[r] <= d[m] // CrossSorted(b[..k] + c[l],c,d,k+1,l,r+1)  
+	ensures forall i,j :: 0 <= j < i < k ==> b[j] <= b[i] && b[j] <= d[r] // Sorted(b[.. k])
+{}
+
+method {:verify true}  MergeRest(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) returns (k: nat, l: nat, r: nat)
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d)
+	requires MergeInv(b,c,d,k0,l0,r0) && !Guard1(b,c,d,k0,l0,r0)
+	ensures Sorted(b) && multiset(b[..]) == multiset(c[..])+multiset(d[..])
+	modifies b 
+{
+	// Seq Composition
+	k, r := MergeRest1(b,c,d,k0,l0,r0);
+	// k, l := MergeRest2(b,c,d,k,l0,r);
+}
+
+method {:verify true}  MergeRest1(b: array<int>, c: array<int>, d: array<int>, k0: nat, l: nat, r0: nat) returns (k: nat, r: nat)
+	requires b != c && b != d && b.Length == c.Length + d.Length
+	requires Sorted(c) && Sorted(d)
+	requires MergeInv(b,c,d,k0,l,r0) && !Guard1(b,c,d,k0,l,r0)
+	ensures MergeInv(b,c,d,k,l,r) && !Guard2(b,c,d,k,l,r)
+	modifies b
+{
+	k, r := k0, r0;
+	// Iteration
+	while (Guard2(b,c,d,k,l,r)) 
+		decreases b.Length - k
+		invariant MergeInv(b,c,d,k,l,r) 
+	{
+		b[k] := d[r];
+		r := r + 1;
+		k := k + 1;	
+	}
+}
+
+predicate method Guard2(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: nat) 
+{
+	k != b.Length && r != d.Length
+}
+
+
 
 method Main() {
 	var a := new int[3];
