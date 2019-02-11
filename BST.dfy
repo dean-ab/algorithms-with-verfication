@@ -1,19 +1,21 @@
 datatype Tree = Empty | Node(int,Tree,Tree)
 
 method Main() {
-	var tree := BuildBST([2,7,3,8,4,-2,9,0]);
-	PrintTreeNumbersInorder(tree);
+	var tree := BuildBST([0, 3, 2, -1, 1]);
+	PrintTreeNumbersInorder(tree, 0);
 }
 
-method PrintTreeNumbersInorder(t: Tree)
+method PrintTreeNumbersInorder(t: Tree, i: nat)
 {
 	match t {
 		case Empty =>
 		case Node(n, l, r) =>
-			PrintTreeNumbersInorder(l);
+			PrintTreeNumbersInorder(l, i + 1);
+			print i;
+			print "		";
 			print n;
 			print "\n";
-			PrintTreeNumbersInorder(r);
+			PrintTreeNumbersInorder(r, i + 1);
 	}
 }
 
@@ -47,15 +49,37 @@ predicate Ascending(q: seq<int>)
 
 predicate NoDuplicates(q: seq<int>) { forall i,j :: 0 <= i < j < |q| ==> q[i] != q[j] }
 
-method BuildBST(q: seq<int>) returns (t: Tree)
+method {:verify false} BuildBST(q: seq<int>) returns (t: Tree)
 	requires NoDuplicates(q)
 	ensures BST(t) && NumbersInTree(t) == NumbersInSequence(q)
+{
+	var i := 0;
+	t := Empty;
+	while (i != |q|) {
+		t := InsertBST(t, q[i]);
+		i := i + 1;
+	}
+}
 
-method InsertBST(t0: Tree, x: int) returns (t: Tree)
+method {:verify false} InsertBST(t0: Tree, x: int) returns (t: Tree)
 	requires BST(t0) && x !in NumbersInTree(t0)
 	ensures BST(t) && NumbersInTree(t) == NumbersInTree(t0)+{x}
+	decreases t0
+{
+	match t0 {
+		case Empty => t := Node(x, Empty, Empty);
+		case Node(val, left, right) => 
+			if (x < val) {
+				var l := InsertBST(left, x);
+				t := Node(val, l, right);
+			} else {
+				var r := InsertBST(right, x);
+				t := Node(val, left, r);
+			}
+	}
+}
 
-lemma	LemmaBinarySearchSubtree(n: int, left: Tree, right: Tree)
+lemma LemmaBinarySearchSubtree(n: int, left: Tree, right: Tree)
 	requires BST(Node(n, left, right))
 	ensures BST(left) && BST(right)
 {
