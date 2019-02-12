@@ -1,12 +1,12 @@
 // include "CCPR191-HeapSort-complete-30Dec18.dfy"
 
-method {:verify true} Parent(index: nat) returns (p: int) 
+method {:verify false} Parent(index: nat) returns (p: int) 
 	ensures p == (index - 1) / 2
 	ensures p <= index
 {
 	p := (index - 1) / 2;
 }
-function {:verify true} ParentFunc(index: nat) : int 
+function {:verify false} ParentFunc(index: nat) : int 
 {
 	(index - 1) / 2
 }
@@ -44,7 +44,7 @@ predicate hi(q: seq<int>, l: nat, h: nat, k: nat)
 function IndexSet(start: nat, end: nat, except: nat): set<nat> {
 	 set i: nat | start <= i < end && i != except }
 
-method {:verify true} HeapInsert(a: array<int>, heapsize: nat, x: int)
+method {:verify false} HeapInsert(a: array<int>, heapsize: nat, x: int)
 	requires 0 <= heapsize < a.Length
 	requires hp(a[..], heapsize)
 	ensures hp(a[..], heapsize+1)
@@ -55,7 +55,7 @@ method {:verify true} HeapInsert(a: array<int>, heapsize: nat, x: int)
 	var newHeapsize := BottomInsert(a, heapsize, x); //add x to a end
 	HeapInsert1(a, newHeapsize, x, old(a[..]));	
 }
-method {:verify true} BottomInsert(a: array<int>, heapsize0: nat, x: int) returns (heapsize: nat)
+method {:verify false} BottomInsert(a: array<int>, heapsize0: nat, x: int) returns (heapsize: nat)
 	requires 0 <= heapsize0 < a.Length
 	requires hp(a[..], heapsize0)
 	ensures heapsize0 == heapsize-1 && 0 < heapsize <= a.Length
@@ -79,7 +79,7 @@ lemma Lemma1 (a: seq<int>, heapsize: nat, x: int,oldA: array<int>)
 {	
 }
 
-method {:verify true} HeapInsert1(a: array<int>, heapsize: nat, x: int, ghost oldA: seq<int>)
+method {:verify false} HeapInsert1(a: array<int>, heapsize: nat, x: int, ghost oldA: seq<int>)
 	requires 0 < heapsize <= a.Length == |oldA| && a[heapsize-1] == x
 	requires multiset(a[..heapsize]) == multiset(oldA[..heapsize-1]+[x])
 	requires hp(a[..], heapsize-1) && ph(a[..heapsize], IndexSet(0, heapsize, heapsize-1))
@@ -91,7 +91,7 @@ method {:verify true} HeapInsert1(a: array<int>, heapsize: nat, x: int, ghost ol
 	Heapify(a, heapsize, x, current, parentIndex, oldA);
 }
 
-method {:verify true} InitCurrAndP(a: array<int>, heapsize: nat, x: int, ghost oldA: seq<int>) returns(current: nat, parentIndex: int)
+method {:verify false} InitCurrAndP(a: array<int>, heapsize: nat, x: int, ghost oldA: seq<int>) returns(current: nat, parentIndex: int)
 	requires 0 < heapsize <= a.Length == |oldA| && a[heapsize-1] == x
 	requires multiset(a[..heapsize]) == multiset(oldA[..heapsize-1]+[x])
 	requires hp(a[..], heapsize-1) && ph(a[..heapsize], IndexSet(0, heapsize, heapsize-1))
@@ -101,7 +101,7 @@ method {:verify true} InitCurrAndP(a: array<int>, heapsize: nat, x: int, ghost o
 	parentIndex := InitParent(a, heapsize, x, current);
 }
 
-method {:verify true} InitCurr(a: array<int>, heapsize: nat, x: int) returns(current: nat)
+method {:verify false} InitCurr(a: array<int>, heapsize: nat, x: int) returns(current: nat)
 	requires 0 < heapsize <= a.Length && a[heapsize-1] == x
 	requires multiset(a[..heapsize]) == multiset(a[..heapsize-1]+[x])
 	requires hp(a[..], heapsize-1)
@@ -117,7 +117,7 @@ lemma LemmaCurr (a: array<int>, heapsize: nat, x: int)
 	ensures 0 <= heapsize - 1 < a.Length && heapsize - 1 == heapsize - 1
 {}
 
-method {:verify true} InitParent(a: array<int>, heapsize: nat, x: int, current: nat) returns(parent: int)
+method {:verify false} InitParent(a: array<int>, heapsize: nat, x: int, current: nat) returns(parent: int)
 	requires 0 < heapsize <= a.Length && a[heapsize-1] == x
 	requires multiset(a[..heapsize]) == multiset(a[..heapsize-1]+[x])
 	requires hp(a[..], heapsize-1) && 0 <= current < a.Length && current == heapsize - 1
@@ -133,7 +133,7 @@ lemma LemmaParent (a: array<int>, heapsize: nat, x: int, current: nat)
 	ensures ParentFunc(current) == (current - 1) / 2
 {}
 
-method {:verify true} Heapify(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int,ghost oldA: seq<int>)
+method {:verify false} Heapify(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int,ghost oldA: seq<int>)
 	requires current0 == heapsize - 1 && parentIndex0 == (current0 - 1) / 2
 	requires 0 <= current0 <= heapsize -1 < a.Length
 	requires a.Length == |oldA|
@@ -170,7 +170,7 @@ predicate WhileInv(a: seq<int>, heapsize: nat, x:int, current: nat,parentIndex: 
 }
 
 
-method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: seq<int>) returns (current: nat, parentIndex: int)
+method {:verify false} LoopBody(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: seq<int>) returns (current: nat, parentIndex: int)
 	requires  0 <= parentIndex0 <= current0 <= heapsize-1 < a.Length == |oldA| && 0 < heapsize <= a.Length
 	requires parentIndex0 == (current0 - 1) / 2 && Guard1(a[..],current0,parentIndex0)
 	requires WhileInv(a[..],heapsize,x,current0,parentIndex0,oldA[..])
@@ -180,7 +180,7 @@ method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: n
 	swap(a, heapsize, x, current0, parentIndex0, oldA); 
 	current, parentIndex := setCAndP(a,heapsize,x,current0,parentIndex0,oldA);
 }
-method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int,ghost oldA: seq<int>) 
+method {:verify false} swap (a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int,ghost oldA: seq<int>) 
 	requires 0 <= parentIndex <= current <= heapsize-1 < a.Length == |oldA| && 0 < heapsize <= a.Length
 	requires parentIndex == (current - 1) / 2 && Guard1(a[..],current,parentIndex)
 	requires WhileInv(a[..],heapsize,x,current,parentIndex,oldA)
@@ -192,7 +192,7 @@ method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, 
 	a[current], a[parentIndex] := a[parentIndex], a[current];
 }
 
-// lemma {:verify true} Lemma3(a: seq<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: seq<int>)
+// lemma {:verify false} Lemma3(a: seq<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: seq<int>)
 // 	requires parentIndex == (current - 1) / 2 && current > 0 && |a| == |oldA|
 // 	requires 0 < heapsize <= |a[..]| && multiset(a[..heapsize]) == multiset(oldA[..heapsize])
 // 	requires 0 <= parentIndex <= current <= heapsize-1 < |a[..]| == |oldA| 
@@ -210,7 +210,7 @@ method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, 
 // 	// assert multiset(a[..parentIndex]+[a[current]]+a[parentIndex+1..current]+[a[parentIndex]]+a[current+1..heapsize]) == multiset(oldA[..heapsize]);
 // }
 
-method setCAndP(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: seq<int>) returns(current: nat, parentIndex: int)
+method {:verify false} setCAndP(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: seq<int>) returns(current: nat, parentIndex: int)
 	requires  0 <= parentIndex0 <= current0 <= heapsize-1 < a.Length == |oldA| && 0 < heapsize <= a.Length
 	requires current0 > 0 && parentIndex0 == (current0 - 1) / 2
 	requires multiset(a[..heapsize]) == multiset(oldA[..heapsize])
@@ -223,7 +223,7 @@ method setCAndP(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex
 	parentIndex := Parent(current);
 }
 
-lemma {:verify true} Lemma4(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: seq<int>)
+lemma {:verify false} Lemma4(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: seq<int>)
 	requires  0 <= parentIndex <= current <= heapsize-1 < a.Length == |oldA| && 0 < heapsize <= a.Length
 	requires current > 0 && parentIndex == (current - 1) / 2
 	requires multiset(a[..heapsize]) == multiset(oldA[..heapsize])

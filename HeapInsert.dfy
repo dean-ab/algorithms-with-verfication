@@ -212,8 +212,9 @@ lemma Lemma2(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: in
 
     assert ph(a[..heapsize], IndexSet(0, heapsize, current));
     assert hi(a[..heapsize],IndexSet(0, heapsize, current),parentIndex);
+    assert IndexSet(0, heapsize, current) == IndexSet(0, parentIndex, current) - IndexSet(0, parentIndex, parentIndex)
     assert lo(a[..heapsize],IndexSet(0, heapsize, current),parentIndex) ==>
-    lo(newA[..heapsize],IndexSet(0, parentIndex, parentIndex),current);
+    lo(newA[..heapsize],IndexSet(0, parentIndex, current),current);
     
     assert hi(newA[..heapsize],IndexSet(0, heapsize, parentIndex),current);
 
