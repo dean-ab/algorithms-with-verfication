@@ -10,12 +10,15 @@ method PrintTreeNumbersInorder(t: Tree, i: nat)
 	match t {
 		case Empty =>
 		case Node(n, l, r) =>
-			PrintTreeNumbersInorder(l, i + 1);
-			print i;
-			print "		";
+			PrintTreeNumbersInorder(r, i + 1);
+			var j := 0;
+			while (j < i) {
+				print "\t";
+				j := j + 1;
+			}
 			print n;
 			print "\n";
-			PrintTreeNumbersInorder(r, i + 1);
+			PrintTreeNumbersInorder(l, i + 1);
 	}
 }
 
@@ -49,15 +52,31 @@ predicate Ascending(q: seq<int>)
 
 predicate NoDuplicates(q: seq<int>) { forall i,j :: 0 <= i < j < |q| ==> q[i] != q[j] }
 
-method {:verify false} BuildBST(q: seq<int>) returns (t: Tree)
+predicate isValidIndex(q: seq<int>, index: nat) 
+{
+	0 <= index <= |q|
+}
+
+method {:verify true} BuildBST(q: seq<int>) returns (t: Tree)
 	requires NoDuplicates(q)
 	ensures BST(t) && NumbersInTree(t) == NumbersInSequence(q)
 {
-	var i := 0;
-	t := Empty;
-	while (i != |q|) {
-		t := InsertBST(t, q[i]);
-		i := i + 1;
+	var i, tree := 0, Empty;
+	t := BuildBST1(q, tree, i);
+}
+
+method {:verify true} BuildBST1(q: seq<int>, tree: Tree, i: nat) returns (t: Tree) 
+	requires NoDuplicates(q)
+	requires isValidIndex(q, i) && BST(tree)
+	requires NumbersInTree(tree) == NumbersInSequence(q[..i])
+	ensures isValidIndex(q, i) && BST(t) && NumbersInTree(t) == NumbersInSequence(q[..i])
+	decreases |q|-i
+{
+	if (i == |q|) {
+		t := tree;
+	} else { 
+		var extendTree := InsertBST(tree, q[i]);
+		t := BuildBST1(q, extendTree, i+1);
 	}
 }
 

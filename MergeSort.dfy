@@ -189,7 +189,7 @@ lemma LemmaArrIRight(arr: array<int>, a: array<int>, i: nat, middle: nat)
 	ensures arr[..i] + [a[i + middle + 1]] == a[middle+1 .. (i + middle + 2)]
 {}
 
-method {:verify false} MergeSort3(a: array<int>, left: array<int>, right: array<int>, middle: nat, i1: nat, i2: nat) returns (b: array<int>)
+method {:verify true} MergeSort3(a: array<int>, left: array<int>, right: array<int>, middle: nat, i1: nat, i2: nat) returns (b: array<int>)
 	requires isLeftArr(a, left, middle, i1) && isRightArr(a, right, middle, i2)
 	requires left.Length + right.Length == a.Length
 	ensures b.Length == a.Length && Sorted(b) && multiset(a[..]) == multiset(b[..])
@@ -373,7 +373,7 @@ lemma LemmaLB2(b: array<int>, c: array<int>, d: array<int>, k: nat, l: nat, r: n
 	ensures forall i,j :: 0 <= j < i < k ==> b[j] <= b[i] && b[j] <= d[r] // Sorted(b[.. k])
 {}
 
-method {:verify false}  MergeRest(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) returns (k: nat, l: nat, r: nat)
+method {:verify true}  MergeRest(b: array<int>, c: array<int>, d: array<int>, k0: nat, l0: nat, r0: nat) returns (k: nat, l: nat, r: nat)
 	requires b != c && b != d && b.Length == c.Length + d.Length
 	requires Sorted(c) && Sorted(d)
 	requires MergeInv(b,c,d,k0,l0,r0) && !Guard1(b,c,d,k0,l0,r0)  
