@@ -1,19 +1,24 @@
 datatype Tree = Empty | Node(int,Tree,Tree)
 
 method Main() {
-	var tree := BuildBST([2,7,3,8,4,-2,9,0]);
-	PrintTreeNumbersInorder(tree);
+	var tree := BuildBST([0, 3, 2, -1, 1]);
+	PrintTreeNumbersInorder(tree, 0);
 }
 
-method PrintTreeNumbersInorder(t: Tree)
+method PrintTreeNumbersInorder(t: Tree, i: nat)
 {
 	match t {
 		case Empty =>
 		case Node(n, l, r) =>
-			PrintTreeNumbersInorder(l);
+			PrintTreeNumbersInorder(r, i + 1);
+			var j := 0;
+			while (j < i) {
+				print "\t";
+				j := j + 1;
+			}
 			print n;
 			print "\n";
-			PrintTreeNumbersInorder(r);
+			PrintTreeNumbersInorder(l, i + 1);
 	}
 }
 
@@ -47,15 +52,53 @@ predicate Ascending(q: seq<int>)
 
 predicate NoDuplicates(q: seq<int>) { forall i,j :: 0 <= i < j < |q| ==> q[i] != q[j] }
 
-method BuildBST(q: seq<int>) returns (t: Tree)
+predicate isValidIndex(q: seq<int>, index: nat) 
+{
+	0 <= index <= |q|
+}
+
+method {:verify true} BuildBST(q: seq<int>) returns (t: Tree)
 	requires NoDuplicates(q)
 	ensures BST(t) && NumbersInTree(t) == NumbersInSequence(q)
+{
+	var i, tree := 0, Empty;
+	t := BuildBST1(q, tree, i);
+}
 
-method InsertBST(t0: Tree, x: int) returns (t: Tree)
+method {:verify true} BuildBST1(q: seq<int>, tree: Tree, i: nat) returns (t: Tree) 
+	requires NoDuplicates(q)
+	requires isValidIndex(q, i) && BST(tree)
+	requires NumbersInTree(tree) == NumbersInSequence(q[..i])
+	ensures isValidIndex(q, i) && BST(t) && NumbersInTree(t) == NumbersInSequence(q[..i])
+	decreases |q|-i
+{
+	if (i == |q|) {
+		t := tree;
+	} else { 
+		var extendTree := InsertBST(tree, q[i]);
+		t := BuildBST1(q, extendTree, i+1);
+	}
+}
+
+method {:verify false} InsertBST(t0: Tree, x: int) returns (t: Tree)
 	requires BST(t0) && x !in NumbersInTree(t0)
 	ensures BST(t) && NumbersInTree(t) == NumbersInTree(t0)+{x}
+	decreases t0
+{
+	match t0 {
+		case Empty => t := Node(x, Empty, Empty);
+		case Node(val, left, right) => 
+			if (x < val) {
+				var l := InsertBST(left, x);
+				t := Node(val, l, right);
+			} else {
+				var r := InsertBST(right, x);
+				t := Node(val, left, r);
+			}
+	}
+}
 
-lemma	LemmaBinarySearchSubtree(n: int, left: Tree, right: Tree)
+lemma LemmaBinarySearchSubtree(n: int, left: Tree, right: Tree)
 	requires BST(Node(n, left, right))
 	ensures BST(left) && BST(right)
 {
