@@ -52,6 +52,21 @@ function IndexSetExcept(start: nat, end: nat, except: nat): set<nat>
 	set i: nat | start <= i < end && i != except 
 }
 
+predicate method Guard1(a: array<int>, current: nat, parentIndex: int, heapsize: nat)
+    reads a
+{
+	0 < current < heapsize <= a.Length && 
+    0 <= parentIndex < heapsize <= a.Length &&
+    a[current] > a[parentIndex]
+}
+
+predicate WhileInv(a: seq<int>, heapsize: nat, x:int, current: nat, parentIndex: int, oldA: multiset<int>)
+{
+    0 <= current < heapsize <= |a| && parentIndex == (current - 1) / 2 &&
+	0 < heapsize <= |a| && multiset(a[..heapsize]) == oldA &&
+	phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, current),current)
+}
+
 method HeapInsert(a: array<int>, heapsize: nat, x: int)
 	requires heapsize < a.Length
 	requires hp(a[..], heapsize)
@@ -84,7 +99,7 @@ method {:verify true} HeapInsert1b(a: array<int>, heapsize: nat, x: int, ghost o
 	ensures multiset(a[..heapsize]) == oldA
 	modifies a
 {
-    // Sequantial Composition + contact frame
+    // Sequantial Composition + Contract Frame
 	var current, parentIndex := InitCurrAndP(a,heapsize, x);
 	HeapInsert2(a, heapsize, x, current, parentIndex, oldA);
 }
@@ -142,7 +157,6 @@ method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0
 	modifies a
 {
 	var current, parentIndex := current0, parentIndex0;
-    // assert WhileInv(a[..],  heapsize, x, current, parentIndex, multiset(old(a[..heapsize])));
 	while (Guard1(a, current, parentIndex,heapsize))
 		invariant WhileInv(a[..], heapsize, x, current, parentIndex, multiset(old(a[..heapsize])))
 		decreases current
@@ -150,61 +164,6 @@ method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0
 		current, parentIndex := LoopBody(a, heapsize, x, current, parentIndex, multiset(old(a[..heapsize])));
 	}
     Lemma4(a,heapsize,x,current,parentIndex,oldA); // WhileInv && !Guard1
-}
-
-predicate method Guard1(a: array<int>, current: nat, parentIndex: int, heapsize: nat)
-    reads a
-{
-	0 < current < heapsize <= a.Length && 
-    0 <= parentIndex < heapsize <= a.Length &&
-    a[current] > a[parentIndex]
-}
-
-predicate WhileInv(a: seq<int>, heapsize: nat, x:int, current: nat, parentIndex: int, oldA: multiset<int>)
-{
-    0 <= current < heapsize <= |a| && parentIndex == (current - 1) / 2 &&
-	0 < heapsize <= |a| && multiset(a[..heapsize]) == oldA &&
-	phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, current),current)
-}
-
-lemma Lemma3(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: multiset<int>)
-    requires 0 < heapsize <= a.Length
-    requires multiset(a[..heapsize]) == oldA
-    requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
-    ensures Guard1(a, current, parentIndex, heapsize) == !lo(a[..], 0, heapsize, current)
-{
-    assert !lo(a[..], 0, heapsize, current) == (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]);
-    // assert parentIndex == (current - 1) / 2;
-    // Direction 1
-    assert Guard1(a, current, parentIndex, heapsize) ==> (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) by {
-        assert 0 < current < heapsize <= a.Length &&  0 <= parentIndex < heapsize <= a.Length && a[current] > a[parentIndex] ==> AncestorIndex(parentIndex, current) ==
-        exists j :: j == parentIndex && AncestorIndex(j, current) && a[current] > a[j];
-    }
-    
-    // Direction 2
-    assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) ==> Guard1(a, current, parentIndex, heapsize) by {
-
-        // Direction 2.1
-        assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) ==> 
-        0 < current < heapsize <= a.Length && 0 <= parentIndex < heapsize <= a.Length;
-
-        // Direction 2.2
-        assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) ==> a[current] > a[parentIndex] by {
-            if (current == 0) {
-                assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) == Guard1(a, current, parentIndex, heapsize);
-            } else {
-                assert current != 0 ==> 0 < current < heapsize ==> 0 <= parentIndex < heapsize;
-                assert parentIndex == (current - 1) / 2;
-                assert lo(a[..],0,heapsize, parentIndex);
-                assert AncestorIndex(parentIndex, current);
-                forall x | 0 <= x < heapsize && x != current && AncestorIndex(x, current) ensures AncestorIndex(x, parentIndex) {
-                    assert parentIndex <= current;
-                    assert AncestorIndex(x, current);
-                    LemmaLegacy(x, parentIndex, current);
-                }
-            }
-        }
-    }
 }
 
 method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: multiset<int>) returns (current: nat, parentIndex: int)
@@ -215,8 +174,8 @@ method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: n
     ensures current < current0 
 	modifies a
 {
+    // Following Assignment + Contract Frame
 	swap(a, heapsize, x, current0, parentIndex0, oldA); 
-    // אמא שלך פורוורד :)
 	current, parentIndex := parentIndex0, (parentIndex0 - 1)/2;
     assert current < current0;
 }
@@ -289,6 +248,46 @@ lemma Lemma2(a: array<int>, heapsize: nat, x: int, current: nat, parent: int, ol
             }
         }
     }
+    lemma Lemma3(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: multiset<int>)
+    requires 0 < heapsize <= a.Length
+    requires multiset(a[..heapsize]) == oldA
+    requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
+    ensures Guard1(a, current, parentIndex, heapsize) == !lo(a[..], 0, heapsize, current)
+{
+    assert !lo(a[..], 0, heapsize, current) == (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]);
+    // assert parentIndex == (current - 1) / 2;
+    // Direction 1
+    assert Guard1(a, current, parentIndex, heapsize) ==> (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) by {
+        assert 0 < current < heapsize <= a.Length &&  0 <= parentIndex < heapsize <= a.Length && a[current] > a[parentIndex] ==> AncestorIndex(parentIndex, current) ==
+        exists j :: j == parentIndex && AncestorIndex(j, current) && a[current] > a[j];
+    }
+    
+    // Direction 2
+    assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) ==> Guard1(a, current, parentIndex, heapsize) by {
+
+        // Direction 2.1
+        assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) ==> 
+        0 < current < heapsize <= a.Length && 0 <= parentIndex < heapsize <= a.Length;
+
+        // Direction 2.2
+        assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) ==> a[current] > a[parentIndex] by {
+            if (current == 0) {
+                assert (exists j :: 0 <= j < heapsize && AncestorIndex(j, current) && a[current] > a[j]) == Guard1(a, current, parentIndex, heapsize);
+            } else {
+                assert current != 0 ==> 0 < current < heapsize ==> 0 <= parentIndex < heapsize;
+                assert parentIndex == (current - 1) / 2;
+                assert lo(a[..],0,heapsize, parentIndex);
+                assert AncestorIndex(parentIndex, current);
+                forall x | 0 <= x < heapsize && x != current && AncestorIndex(x, current) ensures AncestorIndex(x, parentIndex) {
+                    assert parentIndex <= current;
+                    assert AncestorIndex(x, current);
+                    LemmaLegacy(x, parentIndex, current);
+                }
+            }
+        }
+    }
+}
+
 
     lemma Lemma4(a: array<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: multiset<int>)
 	requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
@@ -319,4 +318,17 @@ lemma LemmaLegacy(x: nat, parent: nat, current: nat)
 			}
 		}
 	}
+}
+
+method Main() {
+	var a := new int[8];
+	a[0] := 6;
+	a[1] := 4;
+	a[2] := 5;
+	a[3] := 3;
+	a[4] := 2;
+	a[5] := 0;
+	a[6] := 1;
+	HeapInsert(a, 7, 8);
+	print a[..];
 }

@@ -744,44 +744,44 @@ lemma LemmaEquivalentGuards(a: array<int>, l: nat, h: nat, k: nat, A: multiset<i
 	}
 }
 
-method Main() {
-	var a: array<int> := new int[3];
-	a[0], a[1], a[2] := 4, 8, 6;
-	var q0: seq<int> := a[..];
-	assert q0 == [4,8,6];
-	HeapSort(a);
-	assert multiset(a[..]) == multiset(q0);
-	print "the sorted version of [4, 8, 6] is ";
-	print a[..];
-	assert Sorted(a);
-	assert a[..] == [4,6,8];
+// method Main() {
+// 	var a: array<int> := new int[3];
+// 	a[0], a[1], a[2] := 4, 8, 6;
+// 	var q0: seq<int> := a[..];
+// 	assert q0 == [4,8,6];
+// 	HeapSort(a);
+// 	assert multiset(a[..]) == multiset(q0);
+// 	print "the sorted version of [4, 8, 6] is ";
+// 	print a[..];
+// 	assert Sorted(a);
+// 	assert a[..] == [4,6,8];
 
-	a := new int[5];
-	a[0], a[1], a[2], a[3], a[4] := 3, 8, 5, -1, 10;
-	q0 := a[..];
-	assert q0 == [3, 8, 5, -1, 10];
-	HeapSort(a);
-	assert multiset(a[..]) == multiset(q0);
-	print "\nthe sorted version of [3, 8, 5, -1, 10] is ";
-	print a[..];
-	assert Sorted(a);
-	//assert a[..] == [-1, 3, 5, 8, 10];
+// 	a := new int[5];
+// 	a[0], a[1], a[2], a[3], a[4] := 3, 8, 5, -1, 10;
+// 	q0 := a[..];
+// 	assert q0 == [3, 8, 5, -1, 10];
+// 	HeapSort(a);
+// 	assert multiset(a[..]) == multiset(q0);
+// 	print "\nthe sorted version of [3, 8, 5, -1, 10] is ";
+// 	print a[..];
+// 	assert Sorted(a);
+// 	//assert a[..] == [-1, 3, 5, 8, 10];
 
-	assert AncestorIndex(0,0);
-	assert AncestorIndex(0,1);
-	assert AncestorIndex(0,2);
-	assert AncestorIndex(0,3); // <0,1,3>
-	assert AncestorIndex(0,4); // <0,1,4>
-	assert !AncestorIndex(1,0);
-	assert AncestorIndex(1,1);
-	assert !AncestorIndex(1,2);
-	assert AncestorIndex(1,3);
-	assert AncestorIndex(1,4);
-	assert !AncestorIndex(2,0);
-	assert !AncestorIndex(2,1);
-	assert AncestorIndex(2,2);
-	assert !AncestorIndex(2,3);
-	assert !AncestorIndex(2,4);
-	assert AncestorIndex(2,5);
-	assert AncestorIndex(2,6);
-}
+// 	assert AncestorIndex(0,0);
+// 	assert AncestorIndex(0,1);
+// 	assert AncestorIndex(0,2);
+// 	assert AncestorIndex(0,3); // <0,1,3>
+// 	assert AncestorIndex(0,4); // <0,1,4>
+// 	assert !AncestorIndex(1,0);
+// 	assert AncestorIndex(1,1);
+// 	assert !AncestorIndex(1,2);
+// 	assert AncestorIndex(1,3);
+// 	assert AncestorIndex(1,4);
+// 	assert !AncestorIndex(2,0);
+// 	assert !AncestorIndex(2,1);
+// 	assert AncestorIndex(2,2);
+// 	assert !AncestorIndex(2,3);
+// 	assert !AncestorIndex(2,4);
+// 	assert AncestorIndex(2,5);
+// 	assert AncestorIndex(2,6);
+// }
