@@ -20,17 +20,7 @@ function RightSon(index: nat) : nat
 {
     2*index+2
 }
-// predicate AncestorIndex(i: nat, j: nat) decreases j-i 
-// { 
-// 	i == j || (j > 2*i && ((AncestorIndex(2*i+1, j) || AncestorIndex(2*i+2, j))))
-// }
-// // definition of a heap for the prefix q[..length]
-// predicate hp(q: seq<int>, length: nat)
-// 	requires length <= |q|
-// {
-// 	forall i,j :: 0 <= i < length && 0 <= j < length && AncestorIndex(i, j) ==> q[i] >= q[j]
-// }
-// // a partial heap, restricted for elements whose index is in the given set
+
 predicate phSet(q: seq<int>, s: set<nat>)
 	requires (forall e :: e in s ==> e < |q|)
 {
@@ -62,17 +52,6 @@ function IndexSetExcept(start: nat, end: nat, except: nat): set<nat>
 	set i: nat | start <= i < end && i != except 
 }
 
-lemma Lemma4(a: array<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: multiset<int>)
-	requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
-	requires !Guard1(a,current,parentIndex,heapsize)
-	ensures hp(a[..], heapsize)
-	ensures oldA == multiset(a[..heapsize])
-{
-    assert !Guard1(a,current,parentIndex,heapsize) == lo(a[..],0,heapsize,current) by {
-        Lemma3(a,heapsize, x, current, parentIndex, oldA);
-    }
-}
-
 method HeapInsert(a: array<int>, heapsize: nat, x: int)
 	requires heapsize < a.Length
 	requires hp(a[..], heapsize)
@@ -97,15 +76,6 @@ method HeapInsert1a(a: array<int>, heapsize: nat, x: int)
     Lemma1(a, heapsize, x);
     a[heapsize] := x;
 }
-
-lemma Lemma1 (a: array<int>, heapsize: nat, x: int)
-    requires heapsize < a.Length
-	requires hp(a[..], heapsize)
-    ensures var newA := a[..heapsize]+[x]; 0 < heapsize + 1 <= |newA| && 
-    multiset(newA) == multiset(a[..heapsize]+[x]) && 
-    phAndHi(newA[..heapsize+1], IndexSetExcept(0, heapsize+1, heapsize), heapsize)
-{}
-
 method {:verify true} HeapInsert1b(a: array<int>, heapsize: nat, x: int, ghost oldA: multiset<int>)
     requires 0 < heapsize <= a.Length
     requires multiset(a[..heapsize]) == oldA
@@ -114,6 +84,7 @@ method {:verify true} HeapInsert1b(a: array<int>, heapsize: nat, x: int, ghost o
 	ensures multiset(a[..heapsize]) == oldA
 	modifies a
 {
+    // Sequantial Composition + contact frame
 	var current, parentIndex := InitCurrAndP(a,heapsize, x);
 	HeapInsert2(a, heapsize, x, current, parentIndex, oldA);
 }
@@ -171,11 +142,7 @@ method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0
 	modifies a
 {
 	var current, parentIndex := current0, parentIndex0;
-    assert WhileInv(a[..],  heapsize, x, current, parentIndex, multiset(old(a[..heapsize])));
-    // assert 0 <= current < heapsize <= a.Length;
-    // assert parentIndex == (current - 1) / 2;
-	// assert 0 < heapsize <= a.Length && multiset(a[..heapsize]) == oldA;
-	// assert phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, current),current);
+    // assert WhileInv(a[..],  heapsize, x, current, parentIndex, multiset(old(a[..heapsize])));
 	while (Guard1(a, current, parentIndex,heapsize))
 		invariant WhileInv(a[..], heapsize, x, current, parentIndex, multiset(old(a[..heapsize])))
 		decreases current
@@ -240,42 +207,23 @@ lemma Lemma3(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: in
     }
 }
 
-lemma LemmaLegacy(x: nat, parent: nat, current: nat)
-	requires AncestorIndex(x,current) && AncestorIndex(parent,current)
-	requires parent == (current-1)/2 && x != current
-	ensures AncestorIndex(x,parent)
-	decreases parent-x
-{
-	assert AncestorIndex(x,parent) by {
-		if (x == parent) {
-			assert AncestorIndex(x,parent);
-		} else {
-            // x != parent
-			if (AncestorIndex(LeftSon(x),current)) {
-				LemmaLegacy(LeftSon(x),parent,current);
-			} else {
-				LemmaLegacy(RightSon(x),parent,current);
-			}
-		}
-	}
-}
-
 method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: multiset<int>) returns (current: nat, parentIndex: int)
     requires Guard1(a, current0, parentIndex0,heapsize) && WhileInv(a[..], heapsize, x, current0, parentIndex0, oldA)
-    // ensures WhileInv(a[..], heapsize, x, parentIndex0, (current0 - 1)/2, oldA)
     ensures 0 <= current < heapsize <= a.Length && parentIndex == (current - 1) / 2
     ensures 0 < heapsize <= a.Length && multiset(a[..heapsize]) == oldA
-    ensures phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, current),current)
+    ensures phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, current),current) 
+    ensures current < current0 
 	modifies a
 {
 	swap(a, heapsize, x, current0, parentIndex0, oldA); 
+    // אמא שלך פורוורד :)
 	current, parentIndex := parentIndex0, (parentIndex0 - 1)/2;
+    assert current < current0;
 }
 
 method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int,ghost oldA: multiset<int>) 
     requires Guard1(a, current, parentIndex,heapsize)
     requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
-
     // Modified WhileInv 
     ensures 0 <= current < heapsize <= a.Length && parentIndex == (current - 1) / 2
     ensures 0 < heapsize <= a.Length && multiset(a[..heapsize]) == oldA
@@ -285,6 +233,14 @@ method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, 
 	Lemma2(a ,heapsize,x,current,parentIndex,oldA);
 	a[current], a[parentIndex] := a[parentIndex], a[current];
 }
+
+lemma Lemma1 (a: array<int>, heapsize: nat, x: int)
+    requires heapsize < a.Length
+	requires hp(a[..], heapsize)
+    ensures var newA := a[..heapsize]+[x]; 0 < heapsize + 1 <= |newA| && 
+    multiset(newA) == multiset(a[..heapsize]+[x]) && 
+    phAndHi(newA[..heapsize+1], IndexSetExcept(0, heapsize+1, heapsize), heapsize)
+{}
 
 lemma Lemma2(a: array<int>, heapsize: nat, x: int, current: nat, parent: int, oldA: multiset<int>)
     requires Guard1(a, current, parent,heapsize)
@@ -333,3 +289,34 @@ lemma Lemma2(a: array<int>, heapsize: nat, x: int, current: nat, parent: int, ol
             }
         }
     }
+
+    lemma Lemma4(a: array<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: multiset<int>)
+	requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
+	requires !Guard1(a,current,parentIndex,heapsize)
+	ensures hp(a[..], heapsize)
+	ensures oldA == multiset(a[..heapsize])
+{
+    assert !Guard1(a,current,parentIndex,heapsize) == lo(a[..],0,heapsize,current) by {
+        Lemma3(a,heapsize, x, current, parentIndex, oldA);
+    }
+}
+
+lemma LemmaLegacy(x: nat, parent: nat, current: nat)
+	requires AncestorIndex(x,current) && AncestorIndex(parent,current)
+	requires parent == (current-1)/2 && x != current
+	ensures AncestorIndex(x,parent)
+	decreases parent-x
+{
+	assert AncestorIndex(x,parent) by {
+		if (x == parent) {
+			assert AncestorIndex(x,parent);
+		} else {
+            // x != parent
+			if (AncestorIndex(LeftSon(x),current)) {
+				LemmaLegacy(LeftSon(x),parent,current);
+			} else {
+				LemmaLegacy(RightSon(x),parent,current);
+			}
+		}
+	}
+}
