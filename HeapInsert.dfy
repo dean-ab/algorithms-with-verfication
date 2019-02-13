@@ -64,10 +64,14 @@ function IndexSetExcept(start: nat, end: nat, except: nat): set<nat>
 
 lemma Lemma4(a: array<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: multiset<int>)
 	requires WhileInv(a, heapsize, x, current, parentIndex, oldA)
-	requires lo(a[..],0,heapsize,current)
+	requires !Guard1(a,current,parentIndex,heapsize)
 	ensures hp(a[..], heapsize)
 	ensures oldA == multiset(a[..heapsize])
-{}
+{
+    assert !Guard1(a,current,parentIndex,heapsize) == lo(a[..],0,heapsize,current) by {
+        Lemma3(a,heapsize, x, current, parentIndex, oldA);
+    }
+}
 
 method HeapInsert(a: array<int>, heapsize: nat, x: int)
 	requires heapsize < a.Length
@@ -112,7 +116,6 @@ method {:verify true} HeapInsert1b(a: array<int>, heapsize: nat, x: int, ghost o
 {
 	var current, parentIndex := InitCurrAndP(a,heapsize, x);
 	HeapInsert2(a, heapsize, x, current, parentIndex, oldA);
-    Lemma4(a,heapsize,x,current,parentIndex,oldA);
 }
 
 method {:verify true} InitCurrAndP(a: array<int>, heapsize: nat, x: int) returns(current: nat, parentIndex: int)
@@ -168,7 +171,6 @@ method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0
 	modifies a
 {
 	var current, parentIndex := current0, parentIndex0; 
-    assert !lo(a[..heapsize], 0, heapsize, current) == Guard1(a, current, parentIndex, heapsize);
     assert WhileInv(a,  heapsize, x, current, parentIndex, multiset(old(a[..heapsize])));
 	while (Guard1(a, current, parentIndex,heapsize))
 		invariant WhileInv(a, heapsize, x, current, parentIndex, multiset(old(a[..heapsize])))
@@ -176,7 +178,7 @@ method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0
 	{ 
 		current, parentIndex := LoopBody(a, heapsize, x, current, parentIndex, multiset(old(a[..heapsize])));
 	}
-	// WhileInv && !Guard1
+    Lemma4(a,heapsize,x,current,parentIndex,oldA); // WhileInv && !Guard1
 }
 
 predicate method Guard1(a: array<int>, current: nat, parentIndex: int, heapsize: nat)
@@ -256,8 +258,6 @@ lemma LemmaLegacy(x: nat, parent: nat, current: nat)
 }
 
 method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: multiset<int>) returns (current: nat, parentIndex: int)
-    requires 0 < heapsize <= a.Length
-    requires multiset(a[..heapsize]) == oldA
     requires Guard1(a, current0, parentIndex0,heapsize) && WhileInv(a, heapsize, x, current0, parentIndex0, oldA)
     ensures WhileInv(a, heapsize, x, current, parentIndex, oldA)
 	modifies a
@@ -269,11 +269,12 @@ method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: n
 method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int,ghost oldA: multiset<int>) 
     requires Guard1(a, current, parentIndex,heapsize)
     requires WhileInv(a, heapsize, x, current, parentIndex, oldA)
-    ensures var newA := a[..][current := a[parentIndex]][parentIndex := a[current]];
+    ensures var newA := a[..heapsize][current := a[parentIndex]][parentIndex := a[current]];
+    && WhileInv(Array(newA[..heapsize]), heapsize, x, parentIndex, current, oldA)
     // ensures var newA := a[..parentIndex]+[a[current]]+a[parentIndex+1..current]+[a[parentIndex]]+a[current+1..heapsize];
-    && multiset(newA[..heapsize]) == oldA &&
-    0 < heapsize <= a.Length &&
-    phAndHi(newA[..heapsize], IndexSetExcept(0, heapsize, parentIndex),parentIndex)
+    // && multiset(newA[..heapsize]) == oldA &&
+    // 0 < heapsize <= a.Length &&
+    // phAndHi(newA[..heapsize], IndexSetExcept(0, heapsize, parentIndex),parentIndex)
 	modifies a
 {
 	// Lemma2(a ,heapsize,x,current,parentIndex,oldA);
