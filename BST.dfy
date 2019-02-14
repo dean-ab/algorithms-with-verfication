@@ -61,6 +61,7 @@ method {:verify true} BuildBST(q: seq<int>) returns (t: Tree)
 	requires NoDuplicates(q)
 	ensures BST(t) && NumbersInTree(t) == NumbersInSequence(q)
 {
+	// Contact Frame + Introducing Local Variable
 	var i, tree := 0, Empty;
 	t := BuildBST1(q, tree, i);
 }
@@ -69,16 +70,50 @@ method {:verify true} BuildBST1(q: seq<int>, tree: Tree, i: nat) returns (t: Tre
 	requires NoDuplicates(q)
 	requires isValidIndex(q, i) && BST(tree)
 	requires NumbersInTree(tree) == NumbersInSequence(q[..i])
-	ensures isValidIndex(q, i) && BST(t) && NumbersInTree(t) == NumbersInSequence(q[..i])
-	decreases |q|-i
+	ensures isValidIndex(q, i) && BST(t) && NumbersInTree(t) == NumbersInSequence(q)
+	decreases |q|-i, 1
 {
+	// Alternation
 	if (i == |q|) {
-		t := tree;
+		t := BuildBST1a(q,tree,i);
 	} else { 
-		var extendTree := InsertBST(tree, q[i]);
-		t := BuildBST1(q, extendTree, i+1);
+		t := BuildBST1b(q,tree,i);
 	}
 }
+
+method {:verify true} BuildBST1a(q: seq<int>, tree: Tree, i: nat) returns (t: Tree)
+	requires NoDuplicates(q)
+	requires isValidIndex(q, i) && BST(tree)
+	requires i == |q|
+	requires NumbersInTree(tree) == NumbersInSequence(q[..i])
+	ensures isValidIndex(q, i) && BST(t) && NumbersInTree(t) == NumbersInSequence(q)
+{
+	// Assignment
+	Lemma1(q,tree,i);
+	t := tree;
+} 
+
+method {:verify true} BuildBST1b(q: seq<int>, tree: Tree, i: nat) returns (t: Tree)
+	requires NoDuplicates(q)
+	requires isValidIndex(q, i) && BST(tree)
+	requires i != |q|
+	requires NumbersInTree(tree) == NumbersInSequence(q[..i])
+	ensures isValidIndex(q, i) && BST(t) && NumbersInTree(t) == NumbersInSequence(q)
+	decreases |q|-i, 0
+{
+	// Sequantial Composition + Introducing Local Variable
+	var extendTree := InsertBST(tree, q[i]);
+	t := BuildBST1(q, extendTree, i+1);
+}
+
+
+lemma Lemma1(q: seq<int>, tree: Tree, i: nat)
+	requires NoDuplicates(q)
+	requires isValidIndex(q, i) && BST(tree)
+	requires i == |q|
+	requires NumbersInTree(tree) == NumbersInSequence(q[..i])
+	ensures isValidIndex(q, i) && BST(tree) && NumbersInTree(tree) == NumbersInSequence(q)
+{}
 
 method {:verify false} InsertBST(t0: Tree, x: int) returns (t: Tree)
 	requires BST(t0) && x !in NumbersInTree(t0)
