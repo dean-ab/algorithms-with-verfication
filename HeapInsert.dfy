@@ -24,7 +24,7 @@ function RightSon(index: nat) : nat
 predicate phSet(q: seq<int>, s: set<nat>)
 	requires (forall e :: e in s ==> e < |q|)
 {
-	(forall i,j :: i in s && j in s && AncestorIndex(i, j) ==> q[i] >= q[j])
+	forall i,j :: i in s && j in s && AncestorIndex(i, j) ==> q[i] >= q[j]
 }
 
 predicate phAndHi(q: seq<int>, s: set<nat>, k: nat)
@@ -110,7 +110,8 @@ method {:verify true} InitCurrAndP(a: array<int>, heapsize: nat, x: int) returns
     ensures current == heapsize - 1 && 0 <= current < a.Length && 
     parentIndex == (current - 1) / 2
 
-	{
+{
+    // Sequantial Composition + Contract Frame
 	current := InitCurr(a, heapsize, x);
 	parentIndex := InitParent(a, heapsize, x, current);
 }
@@ -120,6 +121,7 @@ method {:verify true} InitCurr(a: array<int>, heapsize: nat, x: int) returns(cur
     requires phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, heapsize-1), heapsize-1)
     ensures current == heapsize - 1 && 0 <= current < a.Length
 {
+    // Assignment
 	LemmaCurr(a, heapsize, x);
 	current := heapsize - 1; 
 }
@@ -129,12 +131,14 @@ lemma LemmaCurr (a: array<int>, heapsize: nat, x: int)
     requires phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, heapsize-1), heapsize-1)
 	ensures 0 <= heapsize - 1 < a.Length && heapsize - 1 == heapsize - 1
 {}
+
 method {:verify true} InitParent(a: array<int>, heapsize: nat, x: int, current: nat) returns(parent: int)
     requires 0 < heapsize <= a.Length
     requires phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, heapsize-1), heapsize-1)
     requires current == heapsize - 1 && 0 <= current < a.Length 
 	ensures parent == (current - 1) / 2
 {
+    // Assignment
 	LemmaParent(a, heapsize, x, current);
 	parent := Parent(current);
 }
@@ -157,12 +161,14 @@ method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0
 	modifies a
 {
 	var current, parentIndex := current0, parentIndex0;
+    // Iteration + Strengthen Postcondition (by Lemma4)
 	while (Guard1(a, current, parentIndex,heapsize))
 		invariant WhileInv(a[..], heapsize, x, current, parentIndex, multiset(old(a[..heapsize])))
 		decreases current
 	{ 
 		current, parentIndex := LoopBody(a, heapsize, x, current, parentIndex, multiset(old(a[..heapsize])));
 	}
+
     Lemma4(a,heapsize,x,current,parentIndex,oldA); // WhileInv && !Guard1
 }
 
@@ -174,10 +180,9 @@ method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: n
     ensures current < current0 
 	modifies a
 {
-    // Following Assignment + Contract Frame
+    // Following Assignment 
 	swap(a, heapsize, x, current0, parentIndex0, oldA); 
 	current, parentIndex := parentIndex0, (parentIndex0 - 1)/2;
-    assert current < current0;
 }
 
 method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int,ghost oldA: multiset<int>) 
@@ -189,6 +194,7 @@ method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, 
     ensures phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, parentIndex),parentIndex)
     modifies a
 {
+    // Assignment
 	Lemma2(a ,heapsize,x,current,parentIndex,oldA);
 	a[current], a[parentIndex] := a[parentIndex], a[current];
 }
@@ -248,7 +254,7 @@ lemma Lemma2(a: array<int>, heapsize: nat, x: int, current: nat, parent: int, ol
             }
         }
     }
-    lemma Lemma3(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: multiset<int>)
+lemma Lemma3(a: array<int>, heapsize: nat, x: int, current: nat, parentIndex: int, oldA: multiset<int>)
     requires 0 < heapsize <= a.Length
     requires multiset(a[..heapsize]) == oldA
     requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
@@ -289,7 +295,7 @@ lemma Lemma2(a: array<int>, heapsize: nat, x: int, current: nat, parent: int, ol
 }
 
 
-    lemma Lemma4(a: array<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: multiset<int>)
+lemma Lemma4(a: array<int>, heapsize: nat, x:int, current: nat,parentIndex: int, oldA: multiset<int>)
 	requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
 	requires !Guard1(a,current,parentIndex,heapsize)
 	ensures hp(a[..], heapsize)
