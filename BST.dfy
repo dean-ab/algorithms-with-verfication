@@ -147,8 +147,7 @@ method {:verify true} InsertBST1(t0: Tree, x: int, val: int, left: Tree, right: 
 	if (x < val) {
 		t := InsertBST1Left(t0, x, val, left, right);
 	} else {
-		var r := InsertBST(right, x);
-		t := Node(val, left, r);
+		t := InsertBST1Right(t0, x, val, left, right);
 	}
 }
 
@@ -164,6 +163,18 @@ method {:verify true} InsertBST1Left(t0: Tree, x: int, val: int, left: Tree, rig
 	t := Node(val, l, right);
 }
 
+method {:verify true} InsertBST1Right(t0: Tree, x: int, val: int, left: Tree, right: Tree) returns (t: Tree)
+	requires BST(t0) && x !in NumbersInTree(t0) && t0 == Node(val,left,right)
+	requires x > val
+	ensures BST(t) && NumbersInTree(t) == NumbersInTree(t0)+{x}
+	decreases t0, 0
+{
+	LemmaBinarySearchSubtree(val,left,right);
+	var r := InsertBST(right, x);
+	LemmaBinarySearchTreeRight(t0,val,left,right, r, x);
+	t := Node(val, left, r);
+}
+
 lemma LemmaBinarySearchSubtree(n: int, left: Tree, right: Tree)
 	requires BST(Node(n, left, right))
 	ensures BST(left) && BST(right)
@@ -177,7 +188,7 @@ lemma LemmaBinarySearchSubtree(n: int, left: Tree, right: Tree)
 	assert Ascending(qright) by { LemmaAscendingSubsequence(q, qright, |qleft|+1); }
 }
 
-lemma LemmaBinarySearchTreeLeft(t: Tree, n: int, left: Tree, right: Tree, left0: Tree, x:int)
+lemma {:verify true} LemmaBinarySearchTreeLeft(t: Tree, n: int, left: Tree, right: Tree, left0: Tree, x:int)
 	requires BST(left0) && BST(right) && BST(t) && t == Node(n, left0, right)
 	requires BST(left) && NumbersInTree(left) == NumbersInTree(left0)+{x} && x < n 
 	ensures BST(Node(n, left, right))
@@ -185,34 +196,36 @@ lemma LemmaBinarySearchTreeLeft(t: Tree, n: int, left: Tree, right: Tree, left0:
 	var inorderLeft := Inorder(left0);
 	var inorderRight := Inorder(right);
 	var newLeftInorder := Inorder(left);
-	var q := newLeftInorder+[n]+inorderRight;
+	var qOld := inorderLeft + [n] + inorderRight;
+	var q := newLeftInorder + [n] + inorderRight;
 
-	assert Ascending(newLeftInorder + [n] + inorderRight) ==> BST(Node(n, left, right));
-	assert multiset(Inorder(left0)+[x]) == multiset(Inorder(left)) by {
-		assert NumbersInTree(left) == NumbersInTree(left0)+{x};
-	}
-	assert Ascending(inorderLeft) by { assert BST(left0); }
+	assert Ascending(q) == BST(Node(n, left, right));
+
 	assert Ascending(q) by {
 		assert Ascending(newLeftInorder);
 		assert Ascending(inorderRight);
-		assert NumbersInSequence(newLeftInorder) == NumbersInSequence(inorderLeft+[x]);
+		assert Ascending(inorderLeft);
+		assert Ascending(qOld) && forall j :: j in inorderLeft ==> j < n;
 		forall i | i in NumbersInSequence(newLeftInorder) ensures i < n {
-			if (i != x){
-				assert i < n by {
-					assert i in inorderLeft;
-					assert Ascending(inorderLeft+[n]) by {
-						assert Ascending(inorderLeft+[n]+inorderRight) ==> Ascending(inorderLeft+[n]);
-					}
-				}
-			} else {
-				assert i == x;
+			if (i == x) {
 				assert i < n;
+			} else if (i < x) {
+				assert i < x < n;
+			} if (i > x) {
+				var shit := inorderLeft + [n];
+				assert Ascending(shit) by { LemmaAscendingSubsequence(qOld, inorderLeft + [n], 0); }
+				assert shit == Inorder(Node(n, left0, Empty));
+				assert i in shit && Ascending(shit);
 			}
 		}
 	}
-
 }
 
+lemma {:verify true} LemmaBinarySearchTreeRight(t: Tree, n: int, left: Tree, right0: Tree, right: Tree, x:int)
+	requires BST(left) && BST(right0) && BST(t) && t == Node(n, left, right0)
+	requires BST(right) && NumbersInTree(right) == NumbersInTree(right0)+{x} && x > n 
+	ensures BST(Node(n, left, right))
+{}
 
 lemma LemmaAscendingSubsequence(q1: seq<int>, q2: seq<int>, i: nat)
 	requires i <= |q1|-|q2| && q2 == q1[i..i+|q2|]
