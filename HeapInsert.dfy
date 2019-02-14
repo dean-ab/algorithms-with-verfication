@@ -65,6 +65,16 @@ predicate WhileInv(a: seq<int>, heapsize: nat, x:int, current: nat, parentIndex:
     0 <= current < heapsize <= |a| && parentIndex == (current - 1) / 2 &&
 	0 < heapsize <= |a| && multiset(a[..heapsize]) == oldA &&
 	phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, current),current)
+
+    // ensures 0 <= current < heapsize <= a.Length && parentIndex == (current - 1) / 2
+    // ensures 0 < heapsize <= a.Length && multiset(a[..heapsize]) == oldA
+    // ensures phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, parentIndex),parentIndex)
+}
+
+predicate pInv(a: seq<int>, heapsize: nat, x:int, current: nat, parentIndex: int, oldA: multiset<int>)
+{
+    0 <= current < heapsize <= |a| && parentIndex == (current - 1) / 2 &&
+    0 < heapsize <= |a| && multiset(a[..heapsize]) == oldA
 }
 
 method HeapInsert(a: array<int>, heapsize: nat, x: int)
@@ -85,6 +95,7 @@ method HeapInsert1a(a: array<int>, heapsize: nat, x: int)
     ensures 0 < heapsize + 1 <= a.Length
     ensures multiset(a[..heapsize+1]) == multiset(old(a[..heapsize])+[x])
     ensures phAndHi(a[..heapsize+1], IndexSetExcept(0, heapsize+1, heapsize), heapsize)
+    
     modifies a
 {
     // Assignment
@@ -134,8 +145,8 @@ lemma LemmaCurr (a: array<int>, heapsize: nat, x: int)
 
 method {:verify true} InitParent(a: array<int>, heapsize: nat, x: int, current: nat) returns(parent: int)
     requires 0 < heapsize <= a.Length
-    requires phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, heapsize-1), heapsize-1)
     requires current == heapsize - 1 && 0 <= current < a.Length 
+    requires phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, heapsize-1), heapsize-1)
 	ensures parent == (current - 1) / 2
 {
     // Assignment
@@ -151,11 +162,8 @@ lemma LemmaParent (a: array<int>, heapsize: nat, x: int, current: nat)
 {}
 
 method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int,ghost oldA: multiset<int>)
-    requires 0 < heapsize <= a.Length
-    requires multiset(a[..heapsize]) == oldA
+    requires pInv(a[..], heapsize, x, current0, parentIndex0, oldA) && current0 == heapsize - 1
     requires phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, heapsize-1), current0)
-    requires current0 == heapsize - 1 && 0 <= current0 < a.Length && 
-    parentIndex0 == (current0 - 1) / 2
     ensures hp(a[..], heapsize)
 	ensures multiset(a[..heapsize]) == oldA
 	modifies a
@@ -173,9 +181,9 @@ method {:verify true} HeapInsert2(a: array<int>, heapsize: nat, x: int, current0
 }
 
 method {:verify true} LoopBody(a: array<int>, heapsize: nat, x: int, current0: nat, parentIndex0: int, ghost oldA: multiset<int>) returns (current: nat, parentIndex: int)
-    requires Guard1(a, current0, parentIndex0,heapsize) && WhileInv(a[..], heapsize, x, current0, parentIndex0, oldA)
-    ensures 0 <= current < heapsize <= a.Length && parentIndex == (current - 1) / 2
-    ensures 0 < heapsize <= a.Length && multiset(a[..heapsize]) == oldA
+    requires Guard1(a, current0, parentIndex0,heapsize)
+    requires WhileInv(a[..], heapsize, x, current0, parentIndex0, oldA)
+    ensures pInv(a[..], heapsize, x, current, parentIndex, oldA)
     ensures phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, current),current) 
     ensures current < current0 
 	modifies a
@@ -189,8 +197,7 @@ method {:verify true} swap (a: array<int>, heapsize: nat, x: int, current: nat, 
     requires Guard1(a, current, parentIndex,heapsize)
     requires WhileInv(a[..], heapsize, x, current, parentIndex, oldA)
     // Modified WhileInv 
-    ensures 0 <= current < heapsize <= a.Length && parentIndex == (current - 1) / 2
-    ensures 0 < heapsize <= a.Length && multiset(a[..heapsize]) == oldA
+    ensures pInv(a[..], heapsize, x, current, parentIndex, oldA)
     ensures phAndHi(a[..heapsize], IndexSetExcept(0, heapsize, parentIndex),parentIndex)
     modifies a
 {
@@ -212,8 +219,7 @@ lemma Lemma2(a: array<int>, heapsize: nat, x: int, current: nat, parent: int, ol
     requires WhileInv(a[..], heapsize, x, current, parent, oldA)
 
     // Modified WhileInv
-    ensures 0 <= current < heapsize <= a.Length && parent == (current - 1) / 2
-    ensures 0 < heapsize <= a.Length && multiset(a[..heapsize]) == oldA
+    ensures pInv(a[..], heapsize, x, current, parent, oldA)
     ensures phAndHi(a[..heapsize][current := a[parent]][parent := a[current]], IndexSetExcept(0, heapsize, parent),parent)
     {
         assert parent < current;
